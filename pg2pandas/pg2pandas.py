@@ -14,7 +14,7 @@ import numpy as np
 import pandas.io.sql
 
 #I need to get rid from django deps
-from django.db import connection, transaction
+# from django.db import connection, transaction
 
 
 from pandas.core.dtypes.common import (
@@ -119,22 +119,24 @@ def dataframe_from_sql(sql, con):
     if count == 0:
         return None
     
-    with transaction.atomic():
-        cursor = pgcon.cursor("serversidecursor")
+    # with transaction.atomic():
+    if True:
+        cursor = pgcon.cursor("serversidecursor", withhold=True)
+        pgcon.commit()
+        chunk_size = min(count/10, 100000)
+        cursor.itersize = chunk_size 
         cursor.execute(sql)
         
-        chunk_size = min(count/10, 100000)
-    
         columns = []
         arrays = []
     
         i = 0
         
-        while True:
-            rows = cursor.fetchmany(chunk_size)
-
-            if not rows:
-                break
+        # while True:
+        #     rows = cursor.fetchmany(chunk_size)
+        for row in cursor:
+            # if not rows:
+            #     break
     
             if not arrays:
                 # Now we only support int/float types.
@@ -142,7 +144,9 @@ def dataframe_from_sql(sql, con):
                 for i, col_desc in enumerate(cursor.description):
                     columns.append(col_desc[0])
                     dtype = None
-                    if col_desc.type_code == 700:
+                    if col_desc.type_code == 16:
+                        dtype = np.dtype(bool)
+                    elif col_desc.type_code == 700:
                         if col_desc.internal_size == 2:
                             dtype = np.float16
                         elif col_desc.internal_size == 2:
@@ -169,16 +173,17 @@ def dataframe_from_sql(sql, con):
                     arrays.append(thearray)
                 columns = _ensure_index(columns)
                 
-            for row in rows:
-                if i < count:
-                    for j, thearray in enumerate(arrays):
-                        if row[j]:
-                            thearray[i] = row[j]
-                i += 1
+            # for row in rows:
+            if i < count:
+                for j, thearray in enumerate(arrays):
+                    if row[j]:
+                        thearray[i] = row[j]
+            i += 1
                 
            #todo: resize arrays if  i < count
            # It possible, if result set changed between row count calculation,
            # of if we use random sampling in SQL select.
+            pass
 
         cursor.close()
         del cursor
