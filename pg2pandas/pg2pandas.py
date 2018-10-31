@@ -75,7 +75,7 @@ from pandas.core.dtypes.common import (
     is_named_tuple)
 
 from pandas.core.index import (Index, _ensure_index)
-
+from pandas.core.frame import (extract_index)
 
 from pandas import compat
 import numpy as np
