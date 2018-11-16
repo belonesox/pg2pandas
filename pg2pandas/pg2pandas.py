@@ -123,14 +123,14 @@ def dataframe_from_sql(sql, con):
     if True:
         cursor = pgcon.cursor("serversidecursor", withhold=True)
         pgcon.commit()
-        chunk_size = min(count/10, 100000)
+        chunk_size = int(max(min(count/10, 100000), 10))
         cursor.itersize = chunk_size 
         cursor.execute(sql)
         
         columns = []
         arrays = []
     
-        i = 0
+        row_num = 0
         
         # while True:
         #     rows = cursor.fetchmany(chunk_size)
@@ -146,6 +146,8 @@ def dataframe_from_sql(sql, con):
                     dtype = None
                     if col_desc.type_code == 16:
                         dtype = np.dtype(bool)
+                    elif col_desc.type_code == 1082:
+                        dtype = 'datetime64[D]'
                     elif col_desc.type_code == 700:
                         if col_desc.internal_size == 2:
                             dtype = np.float16
@@ -169,16 +171,18 @@ def dataframe_from_sql(sql, con):
                         else:
                             assert "Unknown number type"
             
-                    thearray = np.zeros((count,), dtype=dtype)
+                    thearray = np.empty((count,), dtype=dtype)
                     arrays.append(thearray)
                 columns = _ensure_index(columns)
                 
             # for row in rows:
-            if i < count:
+            if row_num < count:
                 for j, thearray in enumerate(arrays):
                     if row[j]:
-                        thearray[i] = row[j]
-            i += 1
+                        thearray[row_num] = row[j]
+                    else:
+                        pass
+            row_num += 1
                 
            #todo: resize arrays if  i < count
            # It possible, if result set changed between row count calculation,
