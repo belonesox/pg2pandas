@@ -144,8 +144,12 @@ def dataframe_from_sql(sql, con):
                 for i, col_desc in enumerate(cursor.description):
                     columns.append(col_desc[0])
                     dtype = None
+                    if col_desc.type_code == 25:
+                        dtype = np.dtype('U')
                     if col_desc.type_code == 16:
                         dtype = np.dtype(bool)
+                    elif col_desc.type_code == 1043:
+                        dtype = np.object
                     elif col_desc.type_code == 1082:
                         dtype = 'datetime64[D]'
                     elif col_desc.type_code == 700:
@@ -170,7 +174,6 @@ def dataframe_from_sql(sql, con):
                             dtype = np.int64
                         else:
                             assert "Unknown number type"
-            
                     thearray = np.empty((count,), dtype=dtype)
                     arrays.append(thearray)
                 columns = _ensure_index(columns)
